@@ -1,4 +1,4 @@
-import lib.gcforest.data_load as load
+import gcforest.data_load as load
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interp
@@ -8,7 +8,7 @@ from sklearn.model_selection import KFold,StratifiedKFold
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
-from lib.gcforest.gcforest import GCForest
+from gcforest.gcforest import GCForest
 import numpy as np
 
 def gcforest_config():
