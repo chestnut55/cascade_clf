@@ -10,6 +10,15 @@ from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
 from gcforest.gcforest import GCForest
 import numpy as np
+import os, os.path as osp
+
+
+output_dir = osp.join("output", "result")
+if not osp.exists(output_dir):
+    os.makedirs(output_dir)
+file = osp.join(output_dir, "features_selection.txt")
+with open(file,'w') as wf:
+    wf.write('======================\n')
 
 def gcforest_config():
     config = {}
@@ -29,26 +38,33 @@ def gcforest_config():
     config["cascade"] = ca_config
     return config
 
-def print_importance(clf):
+def write_output_results(content):
+    with open(file,'a') as wf:
+        wf.write(content)
+
+def write_final_important_features(clf):
     importances = clf.feature_importances_
     indices = np.argsort(importances)[::-1]
-    print("indices=", len(indices))
-
-    # Print the feature ranking
-    print("The last Classifier Feature ranking:")
-    # features = X_train_enc.shape[1]
     num_selected_features = 30
-    print("features=", num_selected_features)
 
     indices = indices[:num_selected_features]
+
+    output_feat = []
     for f in range(0, num_selected_features):
-        print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
+        f = "%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]])
+        output_feat.append(f)
+    if len(output_feat) >0:
+        content = "\n".join(output_feat)
+        file = osp.join(output_dir, "features_selection.txt")
+        with open(file, 'a') as wf:
+            wf.write(content)
+
 
 if __name__ == "__main__":
-    X, Y = load.hmp_hmpii_data()
+    X, Y = load.obesity_data()
 
 
-    cv = StratifiedKFold(n_splits=10,shuffle=False)
+    cv = StratifiedKFold(n_splits=5,shuffle=False)
 
     clf_rf = RandomForestClassifier(
         n_estimators=100, random_state=0)
@@ -77,8 +93,10 @@ if __name__ == "__main__":
         mean_fpr = np.linspace(0, 1, 100)
         tprs = []
         aucs = []
+        i = 1
         for train, test in cv.split(X, Y):
             if isinstance(x[0], GCForest):
+                write_output_results("\nouter fold " + str(i))
                 gc = x[0]
                 x_train = X.iloc[train]
                 y_train = Y[train]
@@ -111,13 +129,13 @@ if __name__ == "__main__":
                 X_test_enc = X_test_enc.reshape((X_test_enc.shape[0], -1))
                 X_train_origin = X_train.reshape((X_train.shape[0], -1))
                 X_test_origin = X_test.reshape((X_test.shape[0], -1))
-                X_train_enc = np.hstack((X_train_origin, X_train_enc))
-                X_test_enc = np.hstack((X_test_origin, X_test_enc))
+                X_train_enc = np.hstack((X_train_enc, X_train_origin))
+                X_test_enc = np.hstack((X_test_enc, X_test_origin))
                 clf = RandomForestClassifier(n_estimators=1000, max_depth=None, n_jobs=-1)
                 clf.fit(X_train_enc, y_train)
 
-                ### print the important features
-                print_importance(clf)
+                ### output the important features
+                write_final_important_features(clf)
 
                 y_pred = clf.predict(X_test_enc)
                 acc = accuracy_score(y_test, y_pred)
@@ -131,6 +149,7 @@ if __name__ == "__main__":
                 roc_auc = auc(fpr, tpr)
                 aucs.append(roc_auc)
 
+                i = i + 1
             else:
                 probas_ = x[0].fit(X.iloc[train], Y[train]).predict_proba(X.iloc[test])
                 fpr, tpr, thresholds = roc_curve(Y[test], probas_[:, 1])

@@ -140,23 +140,29 @@ class BaseClassifierWrapper(object):
         # elif isinstance(est, RandomForestClassifier):
         #     self.print_importance(est)
         ###
+        self.write_features(est)
     def _predict_proba(self, est, X):
         return est.predict_proba(X)
 
-    def print_importance(self,  clf):
-        importances = clf.feature_importances_
-        indices = np.argsort(importances)[::-1]
-        print("indices=", len(indices))
+    def write_features(self, clf):
+        if isinstance(clf, RandomForestClassifier):
+            importances = clf.feature_importances_
+            indices = np.argsort(importances)[::-1]
 
-        # Print the feature ranking
-        print("Feature ranking:")
-        # features = X_train_enc.shape[1]
-        num_selected_features = 30
-        print("features=", num_selected_features)
+            # features = X_train_enc.shape[1]
+            num_selected_features = 30
 
-        indices = indices[:num_selected_features]
-        for f in range(0, num_selected_features):
-            print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
+            indices = indices[:num_selected_features]
+
+            file = osp.join(osp.join("output", "result"), "features_selection.txt")
+            list = []
+            for f in range(0, num_selected_features):
+                # f = "%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]])
+                f = "feature %d (%f)" % (indices[f], importances[indices[f]])
+                list.append(f)
+
+            with open(file,'a') as wf:
+                wf.write("\n".join(list))
 
     # A helper method for pretty-printing linear models
     def pretty_print_linear(self,coefs, sort):

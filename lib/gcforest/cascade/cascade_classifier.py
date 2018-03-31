@@ -222,6 +222,8 @@ class CascadeClassifier(object):
                 # Fit on X_cur, predict to update X_proba
                 y_train_proba_li = np.zeros((n_trains, n_classes))
                 y_test_proba_li = np.zeros((n_tests, n_classes))
+
+                self.write_lay_id(layer_id)
                 for ei, est_config in enumerate(self.est_configs):
                     est = self._init_estimators(layer_id, ei)
                     # fit_trainsform
@@ -335,3 +337,7 @@ class CascadeClassifier(object):
             LOGGER.info("Saving Data in {} ... X.shape={}, y.shape={}".format(data_path, data["X"].shape, data["y"].shape))
             with open(data_path, "wb") as f:
                 pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+    def write_lay_id(self, lay_id):
+        file = osp.join(osp.join("output", "result"), "features_selection.txt")
+        with open(file, 'a') as wf:
+            wf.write("\n" + "lay_id=" + str(lay_id) + "\n")

@@ -7,13 +7,13 @@ Requirements: This package is developed with Python 2.7, please make sure all th
 ATTN: This package is free for academic usage. You can run it at your own risk. For other purposes, please contact Prof. Zhi-Hua Zhou(zhouzh@lamda.nju.edu.cn)
 ATTN2: This package was developed by Mr.Ji Feng(fengj@lamda.nju.edu.cn). The readme file and demo roughly explains how to use the codes. For any problem concerning the codes, please feel free to contact Mr.Feng. 
 """
-import os, os.path as osp
+import os.path as osp
+
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold
-from sklearn.ensemble import RandomForestClassifier
 
-from ..utils.log_utils import get_logger
 from ..utils.cache_utils import name2path
+from ..utils.log_utils import get_logger
 
 LOGGER = get_logger("gcforest.estimators.kfold_wrapper")
 
@@ -106,10 +106,7 @@ class KFoldWrapper(object):
             if len(X.shape) == 3:
                 y_proba = y_proba.reshape((len(val_idx), -1, y_proba.shape[-1]))
             cv_acc = self.log_eval_metrics(self.name, y[val_idx], y_proba, eval_metrics, "train_{}".format(k))
-            if my_acc < cv_acc:
-                my_acc = cv_acc
-                my_est = est
-
+            self.write_cv_acc("inner fold=" + str(k) + "\n" + "accuracy=" + str(cv_acc))
             # merging result
             if k == 0:
                 if len(X.shape) == 2:
@@ -135,9 +132,6 @@ class KFoldWrapper(object):
         for y_proba in y_probas[1:]:
             y_proba /= self.n_folds
 
-        ## print feature
-        if my_est is not None:
-            self.print_importance(my_est)
         # log
         self.log_eval_metrics(self.name, y, y_probas[0], eval_metrics, "train_cv")
         for vi, (test_name, X_test, y_test) in enumerate(test_sets):
@@ -155,8 +149,7 @@ class KFoldWrapper(object):
         for (eval_name, eval_metric) in eval_metrics:
             accuracy = eval_metric(y_true, y_proba)
             LOGGER.info("Accuracy({}.{}.{})={:.2f}%".format(est_name, y_name, eval_name, accuracy * 100.))
-        if len(eval_metrics) == 1:
-            return accuracy
+        return accuracy
 
     def predict_proba(self, X_test):
         assert 2 <= len(X_test.shape) <= 3, "X_test.shape should be n x k or n x n2 x k"
@@ -175,18 +168,9 @@ class KFoldWrapper(object):
         y_proba_kfolds /= self.n_folds
         return y_proba_kfolds
 
-    def print_importance(self,  clf):
-        if isinstance(clf, RandomForestClassifier):
-            importances = clf.feature_importances_
-            indices = np.argsort(importances)[::-1]
+    def write_cv_acc(self, content):
+        file = osp.join(osp.join("output", "result"), "features_selection.txt")
+        with open(file, 'a') as wf:
+            wf.write("\n" + content + "\n")
 
-            # Print the feature ranking
-            print("Feature ranking:")
-            # features = X_train_enc.shape[1]
-            num_selected_features = 30
-            print("features=", num_selected_features)
-
-            indices = indices[:num_selected_features]
-            for f in range(0, num_selected_features):
-                print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
 
