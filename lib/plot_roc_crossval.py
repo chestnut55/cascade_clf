@@ -29,12 +29,22 @@ def gcforest_config():
     ca_config["n_classes"] = 2
     ca_config["estimators"] = []
     ca_config["estimators"].append(
-        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1})
+        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
+         "max_features": 'sqrt'})
+    # ca_config["estimators"].append(
+    #     {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
+    #      "max_features": 'sqrt'})
+    # ca_config["estimators"].append(
+    #     {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
+    #      "max_features": 1})
+    ca_config["estimators"].append(
+        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
+         "max_features": 1})
     # ca_config["estimators"].append(
     #         {"n_folds": 5, "type": "XGBClassifier", "n_estimators": 10, "max_depth": 5,
     #          "objective": "multi:softprob", "silent": True, "nthread": -1, "learning_rate": 0.1} )
     # ca_config["estimators"].append({"n_folds": 5, "type": "ExtraTreesClassifier"})
-    # ca_config["estimators"].append({"n_folds": 10, "type": "LogisticRegression","C":1.0,"penalty":"l1","tol":1e-4})
+    # ca_config["estimators"].append({"n_folds": 5, "type": "LogisticRegression","C":1.0,"penalty":"l1","tol":1e-4})
     config["cascade"] = ca_config
     return config
 
