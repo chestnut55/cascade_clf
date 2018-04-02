@@ -29,22 +29,20 @@ def gcforest_config():
     ca_config["n_classes"] = 2
     ca_config["estimators"] = []
     ca_config["estimators"].append(
-        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
-         "max_features": 'sqrt'})
-    # ca_config["estimators"].append(
-    #     {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
-    #      "max_features": 'sqrt'})
+        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1})
+    ca_config["estimators"].append(
+        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1})
     # ca_config["estimators"].append(
     #     {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
     #      "max_features": 1})
-    ca_config["estimators"].append(
-        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
-         "max_features": 1})
+    # ca_config["estimators"].append(
+    #     {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
+    #      "max_features": 1})
     # ca_config["estimators"].append(
     #         {"n_folds": 5, "type": "XGBClassifier", "n_estimators": 10, "max_depth": 5,
     #          "objective": "multi:softprob", "silent": True, "nthread": -1, "learning_rate": 0.1} )
-    # ca_config["estimators"].append({"n_folds": 5, "type": "ExtraTreesClassifier"})
-    # ca_config["estimators"].append({"n_folds": 5, "type": "LogisticRegression","C":1.0,"penalty":"l1","tol":1e-4})
+    # ca_config["estimators"].append({"n_folds": 5, "type": "ExtraTreesClassifier","max_depth": None, "n_jobs": -1})
+    # ca_config["estimators"].append({"n_folds": 5, "type": "LogisticRegression"})
     config["cascade"] = ca_config
     return config
 
@@ -71,7 +69,7 @@ def write_final_important_features(clf):
 
 
 if __name__ == "__main__":
-    X, Y = load.obesity_data()
+    X, Y = load.t2d_data()
 
 
     cv = StratifiedKFold(n_splits=5,shuffle=False)
@@ -105,6 +103,7 @@ if __name__ == "__main__":
         aucs = []
         i = 1
         for train, test in cv.split(X, Y):
+            probas_ = None
             if isinstance(x[0], GCForest):
                 write_output_results("\nouter fold " + str(i))
                 gc = x[0]
@@ -121,18 +120,16 @@ if __name__ == "__main__":
                 X_test = x_test[:, np.newaxis, :, :]
 
                 X_train_enc = gc.fit_transform(X_train, y_train)
+
+
+                ###############################
                 # y_pred = gc.predict(X_test)
                 # acc = accuracy_score(y_test, y_pred)
                 # gc_pred_acc.append(acc)
                 # print("Test Accuracy of GcForest = {:.2f} %".format(acc * 100))
                 # probas_ = gc.predict_proba(X_test)
-                # fpr, tpr, thresholds = roc_curve(y_test, probas_[:, 1])
-                # v = interp(mean_fpr, fpr, tpr)
-                # tprs.append(v)
-                # tprs[-1][0] = 0.0
-                # roc_auc = auc(fpr, tpr)
-                # aucs.append(roc_auc)
 
+                ###########################################################
                 # You can try passing X_enc to another classfier on top of gcForest.e.g. xgboost/RF.
                 X_test_enc = gc.transform(X_test)
                 X_train_enc = X_train_enc.reshape((X_train_enc.shape[0], -1))
@@ -152,22 +149,16 @@ if __name__ == "__main__":
                 gc_pred_acc.append(acc)
                 print("Test Accuracy of clf GcForest = {:.2f} %".format(acc * 100))
                 probas_ = clf.predict_proba(X_test_enc)
-                fpr, tpr, thresholds = roc_curve(y_test, probas_[:, 1])
-                v = interp(mean_fpr, fpr, tpr)
-                tprs.append(v)
-                tprs[-1][0] = 0.0
-                roc_auc = auc(fpr, tpr)
-                aucs.append(roc_auc)
-
                 i = i + 1
             else:
-                probas_ = x[0].fit(X.iloc[train], Y[train]).predict_proba(X.iloc[test])
-                fpr, tpr, thresholds = roc_curve(Y[test], probas_[:, 1])
-                v = interp(mean_fpr, fpr, tpr)
-                tprs.append(v)
-                tprs[-1][0] = 0.0
-                roc_auc = auc(fpr, tpr)
-                aucs.append(roc_auc)
+                x[0].fit(X.iloc[train], Y[train])
+                probas_ = x[0].predict_proba(X.iloc[test])
+            fpr, tpr, thresholds = roc_curve(Y[test], probas_[:, 1])
+            v = interp(mean_fpr, fpr, tpr)
+            tprs.append(v)
+            tprs[-1][0] = 0.0
+            roc_auc = auc(fpr, tpr)
+            aucs.append(roc_auc)
 
         mean_tpr = np.mean(tprs, axis=0)
         mean_tpr[-1] = 1.0
