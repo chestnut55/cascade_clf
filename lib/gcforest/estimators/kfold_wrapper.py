@@ -106,7 +106,7 @@ class KFoldWrapper(object):
             if len(X.shape) == 3:
                 y_proba = y_proba.reshape((len(val_idx), -1, y_proba.shape[-1]))
             cv_acc = self.log_eval_metrics(self.name, y[val_idx], y_proba, eval_metrics, "train_{}".format(k))
-            self.write_cv_acc("inner fold=" + str(k) + "\n" + "accuracy=" + str(cv_acc))
+            # self.write_cv_acc("inner fold=" + str(k) + "\n" + "accuracy=" + str(cv_acc))
             # merging result
             if k == 0:
                 if len(X.shape) == 2:

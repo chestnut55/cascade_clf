@@ -21,9 +21,13 @@ and a .predict() function for predictions.
 """
 import itertools
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import auc
+from sklearn.metrics import roc_curve
+from sklearn.model_selection import StratifiedKFold
 
 __author__ = "Pierre-Yves Lablanche"
 __email__ = "plablanche@aims.ac.za"
@@ -37,7 +41,7 @@ class gcForest(object):
 
     def __init__(self, shape_1X=None, n_mgsRFtree=30, window=None, stride=1,
                  cascade_test_size=0.2, n_cascadeRF=2, n_cascadeRFtree=101, cascade_layer=np.inf,
-                 min_samples_mgs=0.1, min_samples_cascade=0.05, tolerance=0.0, n_jobs=1):
+                 min_samples_mgs=0.1, min_samples_cascade=0.1, tolerance=0.0, n_jobs=1):
         """ gcForest Classifier.
 
         :param shape_1X: int or tuple list or np.array (default=None)
@@ -219,7 +223,7 @@ class gcForest(object):
             n_jobs = getattr(self, 'n_jobs')
             prf = RandomForestClassifier(n_estimators=n_tree, max_features='sqrt',
                                          min_samples_split=min_samples, oob_score=True, n_jobs=n_jobs)
-            crf = RandomForestClassifier(n_estimators=n_tree, max_features=1,
+            crf = RandomForestClassifier(n_estimators=n_tree, max_features='sqrt',
                                          min_samples_split=min_samples, oob_score=True, n_jobs=n_jobs)
             print('Training MGS Random Forests...')
             prf.fit(sliced_X, sliced_y)
@@ -228,6 +232,9 @@ class gcForest(object):
             setattr(self, '_mgscrf_{}'.format(window), crf)
             pred_prob_prf = prf.oob_decision_function_
             pred_prob_crf = crf.oob_decision_function_
+            # pred_prob_prf, pred_prob_crf = self.kFolder_cv(prf, crf, sliced_X, sliced_y)
+            # setattr(self, '_mgsprf_{}'.format(window), prf)
+            # setattr(self, '_mgscrf_{}'.format(window), crf)
 
         if hasattr(self, '_mgsprf_{}'.format(window)) and y is None:
             prf = getattr(self, '_mgsprf_{}'.format(window))
@@ -401,7 +408,7 @@ class gcForest(object):
         n_jobs = getattr(self, 'n_jobs')
         prf = RandomForestClassifier(n_estimators=n_tree, max_features='sqrt',
                                      min_samples_split=min_samples, oob_score=True, n_jobs=n_jobs)
-        crf = RandomForestClassifier(n_estimators=n_tree, max_features=1,
+        crf = RandomForestClassifier(n_estimators=n_tree, max_features='sqrt',
                                      min_samples_split=min_samples, oob_score=True, n_jobs=n_jobs)
 
         prf_crf_pred = []
@@ -414,6 +421,11 @@ class gcForest(object):
                 setattr(self, '_cascrf{}_{}'.format(self.n_layer, irf), crf)
                 prf_crf_pred.append(prf.oob_decision_function_)
                 prf_crf_pred.append(crf.oob_decision_function_)
+                # prf_y_probas, crf_y_probas = self.kFolder_cv(prf,crf, X,y)
+                # prf_crf_pred.append(prf_y_probas)
+                # prf_crf_pred.append(crf_y_probas)
+                # setattr(self, '_casprf{}_{}'.format(self.n_layer, irf), prf)
+                # setattr(self, '_cascrf{}_{}'.format(self.n_layer, irf), crf)
         elif y is None:
             for irf in range(n_cascadeRF):
                 prf = getattr(self, '_casprf{}_{}'.format(layer, irf))
@@ -443,6 +455,26 @@ class gcForest(object):
 
         return casc_accuracy
 
+    def _cascade_evaluation_auc(self, X_test, y_test):
+        """ Evaluate the accuracy of the cascade using X and y.
+
+        :param X_test: np.array
+            Array containing the test input samples.
+            Must be of the same shape as training data.
+
+        :param y_test: np.array
+            Test target values.
+
+        :return: float
+            the cascade accuracy.
+        """
+        casc_pred_prob = np.mean(self.cascade_forest(X_test), axis=0)
+        casc_pred = np.argmax(casc_pred_prob, axis=1)
+        casc_auc = auc(y_test, casc_pred, reorder=True)
+        print('Layer validation auc = {}'.format(casc_auc))
+
+        return casc_auc
+
     def _create_feat_arr(self, X, prf_crf_pred):
         """ Concatenate the original feature vector with the predicition probabilities
         of a cascade layer.
@@ -463,3 +495,35 @@ class gcForest(object):
         feat_arr = np.concatenate([add_feat, X], axis=1)
 
         return feat_arr
+
+    def kFolder_cv(self, prf, crf, x, y, splits=5):
+        skf = StratifiedKFold(n_splits=splits, shuffle=False)
+        cv = [(t, v) for (t, v) in skf.split(range(x.shape[0]), y)]
+
+        x = pd.DataFrame(x)
+        prf_y_probas = []
+        crf_y_probas = []
+        for k in range(splits):
+            train_idx, val_idx = cv[k]
+            prf.fit(x.iloc[train_idx,], y[train_idx])
+            crf.fit(x.iloc[train_idx,], y[train_idx])
+
+            prf_y_proba = prf.predict_proba(x.iloc[val_idx,])
+            crf_y_proba = prf.predict_proba(x.iloc[val_idx,])
+            if k == 0:
+                if len(x.shape) == 2:
+                    prf_y_proba_cv = np.zeros((x.shape[0], prf_y_proba.shape[1]), dtype=np.float32)
+                    crf_y_proba_cv = np.zeros((x.shape[0], crf_y_proba.shape[1]), dtype=np.float32)
+                else:
+                    prf_y_proba_cv = np.zeros((x.shape[0], prf_y_proba.shape[1], prf_y_proba.shape[2]), dtype=np.float32)
+                    crf_y_proba_cv = np.zeros((x.shape[0], crf_y_proba.shape[1], crf_y_proba.shape[2]), dtype=np.float32)
+                prf_y_probas.append(prf_y_proba_cv)
+                crf_y_probas.append(crf_y_proba_cv)
+            prf_y_probas[0][val_idx, :] += prf_y_proba
+            crf_y_probas[0][val_idx, :] += crf_y_proba
+
+        for prf_y_proba in prf_y_probas[1:]:
+            prf_y_proba /= splits
+        for crf_y_proba in crf_y_probas[1:]:
+            crf_y_proba /= splits
+        return prf_y_probas, crf_y_probas

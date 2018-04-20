@@ -49,9 +49,9 @@ def cirrhosis_strain_data():
 
 
 def cirrhosis_genus_data():
-    f = pd.read_csv('../lib/gcforest/data/cirrhosis/abundance_cirrhosis_genus.txt', sep='\t', header=None, index_col=0)
+    f = pd.read_csv('../lib/gcforest/data/cirrhosis/count_matrix.csv', sep=',', header=None)
     # f = pd.read_csv('data/cirrhosis/abundance_cirrhosis_genus.txt', sep='\t', header=None, index_col=0)
-    f = f.T
+    # f = f.T
     f = f.loc[(f != 0).any(axis=1)]
 
     l = pd.read_csv('../lib/gcforest/data/cirrhosis/labels_genus.txt', sep='\t', header=None)

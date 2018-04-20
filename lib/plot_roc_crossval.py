@@ -1,4 +1,6 @@
+# -*- coding:utf-8 -*-
 import gcforest.data_load as load
+import gcforest.data_load_phy as load2
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interp
@@ -11,6 +13,7 @@ from sklearn.svm import SVC
 from gcforest.gcforest import GCForest
 import numpy as np
 import os, os.path as osp
+from xgboost import XGBClassifier
 
 
 output_dir = osp.join("output", "result")
@@ -19,6 +22,20 @@ if not osp.exists(output_dir):
 file = osp.join(output_dir, "features_selection.txt")
 with open(file,'w') as wf:
     wf.write('======================\n')
+
+
+def load_json(path):
+    import json
+    """
+    支持以//开头的注释
+    """
+    lines = []
+    with open(path) as f:
+        for row in f.readlines():
+            if row.strip().startswith("//"):
+                continue
+            lines.append(row)
+    return json.loads("\n".join(lines))
 
 def gcforest_config():
     config = {}
@@ -29,19 +46,25 @@ def gcforest_config():
     ca_config["n_classes"] = 2
     ca_config["estimators"] = []
     ca_config["estimators"].append(
-        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1})
+        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 10, "n_jobs": -1})
+    # ca_config["estimators"].append(
+    #     {"n_folds": 3, "type": "RandomForestClassifier", "n_estimators": 10, "n_jobs": -1, "max_features":1,"random_state":0})
+    # ca_config["estimators"].append(
+    #     {"n_folds": 3, "type": "RandomForestClassifier", "n_estimators": 10, "n_jobs": -1, "max_features": 1,"random_state":0})
+    # ca_config["estimators"].append(
+    #     {"n_folds": 3, "type": "RandomForestClassifier", "n_estimators": 10, "n_jobs": -1, "max_features": 1,"random_state":0})
     ca_config["estimators"].append(
-        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1})
+        {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 10, "n_jobs": -1})
     # ca_config["estimators"].append(
-    #     {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
-    #      "max_features": 1})
+    #     {"n_folds": 3, "type": "RandomForestClassifier", "n_estimators": 10, "n_jobs": -1,"random_state":0})
     # ca_config["estimators"].append(
-    #     {"n_folds": 5, "type": "RandomForestClassifier", "n_estimators": 100, "max_depth": None, "n_jobs": -1,
-    #      "max_features": 1})
+    #     {"n_folds": 3, "type": "RandomForestClassifier", "n_estimators": 10, "n_jobs": -1,"random_state":0})
     # ca_config["estimators"].append(
-    #         {"n_folds": 5, "type": "XGBClassifier", "n_estimators": 10, "max_depth": 5,
-    #          "objective": "multi:softprob", "silent": True, "nthread": -1, "learning_rate": 0.1} )
-    # ca_config["estimators"].append({"n_folds": 5, "type": "ExtraTreesClassifier","max_depth": None, "n_jobs": -1})
+    #     {"n_folds": 3, "type": "RandomForestClassifier", "n_estimators": 10, "n_jobs": -1,"random_state":0})
+    # ca_config["estimators"].append(
+    #         {"n_folds": 5, "type": "XGBClassifier", "n_estimators": 200,
+    #           "silent": True, "nthread": -1, "learning_rate": 0.1} )
+    # ca_config["estimators"].append({"n_folds": 5, "type": "ExtraTreesClassifier","n_estimators": 200, "n_jobs": -1})
     # ca_config["estimators"].append({"n_folds": 5, "type": "LogisticRegression"})
     config["cascade"] = ca_config
     return config
@@ -69,13 +92,12 @@ def write_final_important_features(clf):
 
 
 if __name__ == "__main__":
-    X, Y = load.t2d_data()
+    X, Y = load.obesity_data()
 
 
-    cv = StratifiedKFold(n_splits=5,shuffle=False)
+    cv = StratifiedKFold(n_splits=10,shuffle=False,random_state=0)
 
-    clf_rf = RandomForestClassifier(
-        n_estimators=100, random_state=0)
+    clf_rf = RandomForestClassifier(n_estimators=50, random_state=0)
     scores = cross_val_score(clf_rf, X, Y, cv=cv, scoring='accuracy')
     print("clf_rf", scores)
     print("Accuracy of Random Forest Classifier: %0.3f (+/- %0.3f)" % (scores.mean(), scores.std() * 2))
@@ -86,8 +108,10 @@ if __name__ == "__main__":
     print("clf_svm", scores)
     print("Accuracy SVM Classifier: %0.3f (+/- %0.3f)" % (scores.mean(), scores.std() * 2))
 
+    # xgb_crf =  XGBClassifier(n_estimators=50)
 
     config = gcforest_config()
+    # config = load_json("gc.json")
     clf_gc = GCForest(config)
     gc_pred_acc = []
 
@@ -96,7 +120,7 @@ if __name__ == "__main__":
     params = [(clf_rf, 'green', "Random Forest"),
               (clf_svm, 'black', "SVM"),
               (clf_gc,'red',"Deep Forest")]
-
+              # (xgb_crf,'purple', "XGBoosing")]
     for x in params:
         mean_fpr = np.linspace(0, 1, 100)
         tprs = []
@@ -113,8 +137,8 @@ if __name__ == "__main__":
                 x_test = X.iloc[test]
                 y_test = Y[test]
 
-                x_train = x_train.values.reshape(-1, 1, len(x_train.columns)).astype('float32')
-                x_test = x_test.values.reshape(-1, 1, len(x_test.columns)).astype('float32')
+                x_train = x_train.values.reshape(-1, 1, len(x_train.columns))
+                x_test = x_test.values.reshape(-1, 1, len(x_test.columns))
 
                 X_train = x_train[:, np.newaxis, :, :]
                 X_test = x_test[:, np.newaxis, :, :]
@@ -138,18 +162,17 @@ if __name__ == "__main__":
                 X_test_origin = X_test.reshape((X_test.shape[0], -1))
                 X_train_enc = np.hstack((X_train_enc, X_train_origin))
                 X_test_enc = np.hstack((X_test_enc, X_test_origin))
-                clf = RandomForestClassifier(n_estimators=1000, max_depth=None, n_jobs=-1)
+                clf = RandomForestClassifier(n_estimators=1000, n_jobs=-1)
                 clf.fit(X_train_enc, y_train)
-
-                ### output the important features
-                write_final_important_features(clf)
+                #
+                # ### output the important features
+                # # write_final_important_features(clf)
 
                 y_pred = clf.predict(X_test_enc)
                 acc = accuracy_score(y_test, y_pred)
                 gc_pred_acc.append(acc)
                 print("Test Accuracy of clf GcForest = {:.2f} %".format(acc * 100))
                 probas_ = clf.predict_proba(X_test_enc)
-                i = i + 1
             else:
                 x[0].fit(X.iloc[train], Y[train])
                 probas_ = x[0].predict_proba(X.iloc[test])
@@ -159,6 +182,8 @@ if __name__ == "__main__":
             tprs[-1][0] = 0.0
             roc_auc = auc(fpr, tpr)
             aucs.append(roc_auc)
+            # plt.plot(fpr,tpr,lw=1,alpha=0.3, label='ROC fold %d (AUC = %0.3f)' % (i,roc_auc))
+            i = i + 1
 
         mean_tpr = np.mean(tprs, axis=0)
         mean_tpr[-1] = 1.0

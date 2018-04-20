@@ -79,3 +79,8 @@ def get_dataset_base():
 
 def get_dataset_cache_base():
     return osp.abspath(osp.join(__file__, osp.pardir, osp.pardir, osp.pardir, osp.pardir, "datasets-cache"))
+
+# convert abundance vector into tree matrix
+def generate_maps(x, g, f):
+    g.populate_graph(f, x)
+    return x, np.array(g.get_map())

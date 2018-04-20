@@ -140,7 +140,7 @@ class BaseClassifierWrapper(object):
         # elif isinstance(est, RandomForestClassifier):
         #     self.print_importance(est)
         ###
-        self.write_features(est)
+        # self.write_features(est)
     def _predict_proba(self, est, X):
         return est.predict_proba(X)
 

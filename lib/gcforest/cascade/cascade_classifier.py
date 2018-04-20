@@ -16,6 +16,8 @@ from ..estimators import get_estimator_kfold
 from ..utils.config_utils import get_config_value
 from ..utils.log_utils import get_logger
 from ..utils.metrics import accuracy_pb
+from sklearn.metrics import auc
+from sklearn.metrics import roc_curve
 
 LOGGER = get_logger('gcforest.cascade.cascade_classifier')
 
@@ -30,7 +32,13 @@ def calc_accuracy(y_true, y_pred, name, prefix=""):
     acc = 100. * np.sum(np.asarray(y_true) == y_pred) / len(y_true)
     LOGGER.info('{}Accuracy({})={:.2f}%'.format(prefix, name, acc))
     return acc
-
+    # fpr, tpr, thresholds = roc_curve(y_true, y_pred[:, 1])
+    # roc_auc = auc(fpr, tpr)
+    # return roc_auc
+def calc_auc(y_true, y_pred, name, prefix=""):
+    auc_score = auc(y_true, y_pred,reorder=True)
+    LOGGER.info('{}Accuracy({})={:.2f}%'.format(prefix, name, auc_score*100.0))
+    return auc_score
 
 def get_opt_layer_id(acc_list):
     """ Return layer id with max accuracy on training data """
@@ -223,7 +231,7 @@ class CascadeClassifier(object):
                 y_train_proba_li = np.zeros((n_trains, n_classes))
                 y_test_proba_li = np.zeros((n_tests, n_classes))
 
-                self.write_lay_id(layer_id)
+                # self.write_lay_id(layer_id)
                 for ei, est_config in enumerate(self.est_configs):
                     est = self._init_estimators(layer_id, ei)
                     # fit_trainsform
@@ -242,10 +250,15 @@ class CascadeClassifier(object):
                         self._set_estimator(layer_id, ei, est)
                 y_train_proba_li /= len(self.est_configs)
                 train_avg_acc = calc_accuracy(y_train, np.argmax(y_train_proba_li, axis=1), 'layer_{} - train.classifier_average'.format(layer_id))
+                # train_avg_acc = calc_accuracy(y_train, y_train_proba_li,
+                #                               'layer_{} - train.classifier_average'.format(layer_id))
+
                 train_acc_list.append(train_avg_acc)
                 if n_tests > 0:
                     y_test_proba_li /= len(self.est_configs)
                     test_avg_acc = calc_accuracy(y_test, np.argmax(y_test_proba_li, axis=1), 'layer_{} - test.classifier_average'.format(layer_id))
+                    # test_avg_acc = calc_accuracy(y_test, y_test_proba_li,
+                    #                              'layer_{} - test.classifier_average'.format(layer_id))
                     test_acc_list.append(test_avg_acc)
                 else:
                     test_acc_list.append(0.0)
