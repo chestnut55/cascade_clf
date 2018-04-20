@@ -1,6 +1,4 @@
 import numpy as np
-import untangle
-import xmltodict
 
 
 class Node:
