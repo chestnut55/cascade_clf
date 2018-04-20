@@ -19,9 +19,10 @@ sys.path.insert(0, "/home/qiang/repo/python/cascade_clf/lib")
 
 from gcforest.gcforest import GCForest
 from gcforest.utils.config_utils import load_json
+from gcforest.utils.log_utils import get_logger
 
 from gcforest.datasets import t2d,obesity,cirrhosis
-
+LOGGER = get_logger('gcforest.cascade.cascade_classifier')
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -59,6 +60,8 @@ if __name__ == "__main__":
     y_pred = gc.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     print("Test Accuracy of GcForest = {:.2f} %".format(acc * 100))
+    LOGGER.info("Test Accuracy of GcForest = {:.2f} %".format(acc * 100))
+
 
     # You can try passing X_enc to another classfier on top of gcForest.e.g. xgboost/RF.
     X_test_enc = gc.transform(X_test)
@@ -69,11 +72,13 @@ if __name__ == "__main__":
     X_train_enc = np.hstack((X_train_origin, X_train_enc))
     X_test_enc = np.hstack((X_test_origin, X_test_enc))
     print("X_train_enc.shape={}, X_test_enc.shape={}".format(X_train_enc.shape, X_test_enc.shape))
+    LOGGER.info("X_train_enc.shape={}, X_test_enc.shape={}".format(X_train_enc.shape, X_test_enc.shape))
     clf = RandomForestClassifier(n_estimators=500, max_depth=None, n_jobs=-1)
     clf.fit(X_train_enc, y_train)
     y_pred = clf.predict(X_test_enc)
     acc = accuracy_score(y_test, y_pred)
     print("Test Accuracy of Other classifier using gcforest's X_encode = {:.2f} %".format(acc * 100))
+    LOGGER.info("Test Accuracy of Other classifier using gcforest's X_encode = {:.2f} %".format(acc * 100))
 
     # dump
     with open("test.pkl", "wb") as f:
@@ -84,6 +89,7 @@ if __name__ == "__main__":
     y_pred = gc.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     print("Test Accuracy of GcForest (save and load) = {:.2f} %".format(acc * 100))
+    LOGGER.info("Test Accuracy of GcForest (save and load) = {:.2f} %".format(acc * 100))
 
 
 
