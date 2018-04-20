@@ -8,7 +8,7 @@ from numpy import unique
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
-from lib.gcforest.datasets.graph import Graph
+from .graph import Graph
 from .ds_base import ds_base, get_dataset_base,generate_maps
 
 
