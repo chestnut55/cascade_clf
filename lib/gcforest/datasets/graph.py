@@ -166,14 +166,14 @@ class Graph:
                     s = 0
                     n_children = len(n.get_children())
                     for c in n.get_children():
-                        # s = s + float(c.get_abundance())
-                        s = s + float(c.get_abundance())/n_children ## add the weight
+                        s = s + float(c.get_abundance())
+                        # s = s + float(c.get_abundance())/n_children ## add the weight
 
                     for i in range(0, len(lab)):
                         if str(n.get_id()).replace("_", " ") == str(lab[i]):
                             tracker[str(lab[i])] = True
-                            # s = s + x[i]
-                            s = 0.5 * s + 0.5 * x[i]  ## add the weight
+                            s = s + x[i]
+                            # s = 0.5 * s + 0.5 * x[i]  ## add the weight
                     n.set_abundance(s)
                 else:
                     for i in range(0, len(lab)):

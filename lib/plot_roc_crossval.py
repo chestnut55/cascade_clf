@@ -92,10 +92,10 @@ def write_final_important_features(clf):
 
 
 if __name__ == "__main__":
-    X, Y = load.obesity_data()
+    X, Y = load2.t2d_data()
 
 
-    cv = StratifiedKFold(n_splits=10,shuffle=False,random_state=0)
+    cv = StratifiedKFold(n_splits=5,shuffle=False,random_state=0)
 
     clf_rf = RandomForestClassifier(n_estimators=50, random_state=0)
     scores = cross_val_score(clf_rf, X, Y, cv=cv, scoring='accuracy')
@@ -110,8 +110,9 @@ if __name__ == "__main__":
 
     # xgb_crf =  XGBClassifier(n_estimators=50)
 
-    config = gcforest_config()
+    # config = gcforest_config()
     # config = load_json("gc.json")
+    config = load_json("/home/qiang/repo/python/cascade_clf/examples/demo_ca.json")
     clf_gc = GCForest(config)
     gc_pred_acc = []
 
@@ -137,42 +138,42 @@ if __name__ == "__main__":
                 x_test = X.iloc[test]
                 y_test = Y[test]
 
-                x_train = x_train.values.reshape(-1, 1, len(x_train.columns))
-                x_test = x_test.values.reshape(-1, 1, len(x_test.columns))
+                X_train = x_train.values.reshape(-1, 1, len(x_train.columns))
+                X_test = x_test.values.reshape(-1, 1, len(x_test.columns))
 
-                X_train = x_train[:, np.newaxis, :, :]
-                X_test = x_test[:, np.newaxis, :, :]
+                # X_train = x_train[:, np.newaxis, :, :]
+                # X_test = x_test[:, np.newaxis, :, :]
 
                 X_train_enc = gc.fit_transform(X_train, y_train)
 
 
                 ###############################
-                # y_pred = gc.predict(X_test)
-                # acc = accuracy_score(y_test, y_pred)
-                # gc_pred_acc.append(acc)
-                # print("Test Accuracy of GcForest = {:.2f} %".format(acc * 100))
-                # probas_ = gc.predict_proba(X_test)
+                y_pred = gc.predict(X_test)
+                acc = accuracy_score(y_test, y_pred)
+                gc_pred_acc.append(acc)
+                print("Test Accuracy of GcForest = {:.2f} %".format(acc * 100))
+                probas_ = gc.predict_proba(X_test)
 
                 ###########################################################
                 # You can try passing X_enc to another classfier on top of gcForest.e.g. xgboost/RF.
-                X_test_enc = gc.transform(X_test)
-                X_train_enc = X_train_enc.reshape((X_train_enc.shape[0], -1))
-                X_test_enc = X_test_enc.reshape((X_test_enc.shape[0], -1))
-                X_train_origin = X_train.reshape((X_train.shape[0], -1))
-                X_test_origin = X_test.reshape((X_test.shape[0], -1))
-                X_train_enc = np.hstack((X_train_enc, X_train_origin))
-                X_test_enc = np.hstack((X_test_enc, X_test_origin))
-                clf = RandomForestClassifier(n_estimators=1000, n_jobs=-1)
-                clf.fit(X_train_enc, y_train)
+                # X_test_enc = gc.transform(X_test)
+                # X_train_enc = X_train_enc.reshape((X_train_enc.shape[0], -1))
+                # X_test_enc = X_test_enc.reshape((X_test_enc.shape[0], -1))
+                # X_train_origin = X_train.reshape((X_train.shape[0], -1))
+                # X_test_origin = X_test.reshape((X_test.shape[0], -1))
+                # X_train_enc = np.hstack((X_train_enc, X_train_origin))
+                # X_test_enc = np.hstack((X_test_enc, X_test_origin))
+                # clf = RandomForestClassifier(n_estimators=500, n_jobs=-1)
+                # clf.fit(X_train_enc, y_train)
                 #
                 # ### output the important features
                 # # write_final_important_features(clf)
 
-                y_pred = clf.predict(X_test_enc)
-                acc = accuracy_score(y_test, y_pred)
-                gc_pred_acc.append(acc)
-                print("Test Accuracy of clf GcForest = {:.2f} %".format(acc * 100))
-                probas_ = clf.predict_proba(X_test_enc)
+                # y_pred = clf.predict(X_test_enc)
+                # acc = accuracy_score(y_test, y_pred)
+                # gc_pred_acc.append(acc)
+                # print("Test Accuracy of clf GcForest = {:.2f} %".format(acc * 100))
+                # probas_ = clf.predict_proba(X_test_enc)
             else:
                 x[0].fit(X.iloc[train], Y[train])
                 probas_ = x[0].predict_proba(X.iloc[test])
