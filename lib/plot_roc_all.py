@@ -16,6 +16,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.svm import SVC
 
 import gcforest.data_load_phy as load2
+import gcforest.data_load as load
 from gcforest.gcforest import GCForest
 from gcforest.utils.log_utils import get_logger
 
@@ -96,7 +97,11 @@ if __name__ == "__main__":
 
     save_fig = True
     # # ==============================================
+
     f, ax = plt.subplots(1, 3, sharex=True, sharey=True,figsize=(10,5))
+
+    params = {'legend.fontsize': 8, 'legend.handlelength': 0.5}
+    plt.rcParams.update(params)
 
     cv = StratifiedKFold(n_splits=5, shuffle=False, random_state=0)
 
@@ -114,11 +119,11 @@ if __name__ == "__main__":
         X = None
         Y = None
         if dataset_idx == 0:
-            X, Y = load2.cirrhosis_data()
+            X, Y = load.cirrhosis_strain_data()
         elif dataset_idx == 1:
-            X, Y = load2.t2d_data()
+            X, Y = load.t2d_data()
         elif dataset_idx == 2:
-            X, Y = load2.obesity_data()
+            X, Y = load.obesity_data()
         else:
             raise Exception('the dataset is not defined!!!')
 
@@ -267,7 +272,7 @@ if __name__ == "__main__":
             mean_tpr[-1] = 1.0
             mean_auc = auc(mean_fpr, mean_tpr)
             std_auc = np.std(aucs)
-            ax[dataset_idx].plot(mean_fpr, mean_tpr, color=x[1], label='{}' '(auc = {:.3f})'.format(x[2], mean_auc),
+            ax[dataset_idx].plot(mean_fpr, mean_tpr, color=x[1], label='{}' '(auc={:.3f})'.format(x[2], mean_auc),
                                  lw=2, alpha=.8)
 
         print("Accuracy Deep Forest: %0.3f (+/- %0.3f)" % (
@@ -278,9 +283,10 @@ if __name__ == "__main__":
         ax[dataset_idx].legend(loc='lower right')
         ax[dataset_idx].set_ylabel('True Positive Rate')
         ax[dataset_idx].set_xlabel('False Positive Rate')
+        ax[dataset_idx].set(adjustable='box-forced', aspect='equal')
 
     if save_fig:
-        plt.savefig('result.png',  bbox_inches='tight')
+        plt.savefig('result.png', bbox_inches='tight')
         plt.close(f)
     else:
         plt.show()
