@@ -21,7 +21,7 @@ class GCForest(object):
         else:
             self.ca = None
 
-    def fit_transform(self, X_train, y_train, X_test=None, y_test=None, train_config=None):
+    def fit_transform(self, X_train, y_train, X_test=None, y_test=None, train_config=None, threshold=None):
         train_config = train_config or self.train_config
         if X_test is None or y_test is None:
             if "test" in train_config.phases:
@@ -33,10 +33,10 @@ class GCForest(object):
             if "test" in train_config.phases:
                 X_test = self.fg.get_outputs("test")
         if self.ca is not None:
-            _, X_train, _, X_test, _, = self.ca.fit_transform(X_train, y_train, X_test, y_test, train_config=train_config)
+            _, X_train, _, X_test, _,_features = self.ca.fit_transform(X_train, y_train, X_test, y_test, train_config=train_config, threshold=threshold)
 
         if X_test is None:
-            return X_train
+            return X_train, _features
         else:
             return X_train, X_test
 

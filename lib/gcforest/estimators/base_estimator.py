@@ -9,6 +9,7 @@ ATTN2: This package was developed by Mr.Ji Feng(fengj@lamda.nju.edu.cn). The rea
 """
 import os, os.path as osp
 import numpy as np
+import pandas as pd
 
 from ..utils.log_utils import get_logger
 from ..utils.cache_utils import name2path
@@ -42,7 +43,7 @@ class BaseClassifierWrapper(object):
         est = self.est_class(**self.est_args)
         return est
 
-    def fit(self, X, y, cache_dir=None):
+    def fit(self, X, y, cache_dir=None, threshold=None):
         """
         cache_dir(str): 
             if not None
@@ -56,7 +57,7 @@ class BaseClassifierWrapper(object):
             LOGGER.info("Find estimator from {} . skip process".format(cache_path))
             return
         est = self._init_estimator()
-        self._fit(est, X, y)
+        _features = self._fit(est, X, y, threshold)
         if cache_path is not None:
             # saved in disk
             LOGGER.info("Save estimator to {} ...".format(cache_path))
@@ -66,6 +67,7 @@ class BaseClassifierWrapper(object):
         else:
             # keep in memory
             self.est = est
+        return _features
 
     def predict_proba(self, X, cache_dir=None, batch_size=None):
         LOGGER.debug("X.shape={}".format(X.shape))
@@ -130,45 +132,19 @@ class BaseClassifierWrapper(object):
         """
         return 0
 
-    def _fit(self, est, X, y):
+    def _fit(self, est, X, y, threshold=0.001):
         est.fit(X, y)
-        ### add @2018.3.28
-        # if isinstance(est, ExtraTreesClassifier):
-        #     self.print_importance(est)
-        # elif isinstance(est, LogisticRegression):
-        #     self.pretty_print_linear(est.coef_, True)
-        # elif isinstance(est, RandomForestClassifier):
-        #     self.print_importance(est)
-        ###
-        # self.write_features(est)
+        return self._features(est, threshold)
+
     def _predict_proba(self, est, X):
         return est.predict_proba(X)
 
-    def write_features(self, clf):
-        if isinstance(clf, RandomForestClassifier):
-            importances = clf.feature_importances_
-            indices = np.argsort(importances)[::-1]
+    def _features(self, clf, theshold):
+        importances = clf.feature_importances_
+        importances = [imp for imp in importances if imp > theshold]
+        features_idx = np.argsort(importances)[::-1]
 
-            # features = X_train_enc.shape[1]
-            num_selected_features = 30
-
-            indices = indices[:num_selected_features]
-
-            file = osp.join(osp.join("output", "result"), "features_selection.txt")
-            list = []
-            for f in range(0, num_selected_features):
-                # f = "%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]])
-                f = "feature %d (%f)" % (indices[f], importances[indices[f]])
-                list.append(f)
-
-            with open(file,'a') as wf:
-                wf.write("\n".join(list))
-
-    # A helper method for pretty-printing linear models
-    def pretty_print_linear(self,coefs, sort):
-        print("Logistical Regression Model:")
-        ll_names = ["X%s" % x for x in range(len(coefs))]
-        lst = zip(coefs, ll_names)
-        if sort:
-            lst = sorted(lst, key=lambda x: -np.abs(x[0]))
-        print("Logistical Regression Model:".join("%s * %s" % (np.round(coef, 4), name) for coef, name in lst))
+        dict = {}
+        for i in range(len(features_idx)):
+            dict[str(features_idx[i])] = importances[features_idx[i]]
+        return pd.Series(dict)

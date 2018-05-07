@@ -18,7 +18,7 @@ from ..utils.log_utils import get_logger
 from ..utils.metrics import accuracy_pb
 from sklearn.metrics import auc
 from sklearn.metrics import roc_curve
-
+import pandas as pd
 LOGGER = get_logger('gcforest.cascade.cascade_classifier')
 
 
@@ -157,7 +157,7 @@ class CascadeClassifier(object):
             self.group_starts, self.group_ends, self.group_dims = group_starts, group_ends, group_dims
         return group_starts, group_ends, group_dims, X
 
-    def fit_transform(self, X_groups_train, y_train, X_groups_test, y_test, stop_by_test=False, train_config=None):
+    def fit_transform(self, X_groups_train, y_train, X_groups_test, y_test, stop_by_test=False, train_config=None, threshold=None):
         """
         fit until the accuracy converges in early_stop_rounds
         stop_by_test: (bool)
@@ -209,6 +209,7 @@ class CascadeClassifier(object):
             X_proba_test = np.zeros((n_tests, n_classes * self.n_estimators_1), dtype=np.float32)
             X_cur_train, X_cur_test = None, None
             layer_id = 0
+            dict_layer_features = {}
             while 1:
                 if self.max_layers > 0 and layer_id >= self.max_layers:
                     break
@@ -232,13 +233,15 @@ class CascadeClassifier(object):
                 y_test_proba_li = np.zeros((n_tests, n_classes))
 
                 # self.write_lay_id(layer_id)
+                li__features = pd.Series()
                 for ei, est_config in enumerate(self.est_configs):
                     est = self._init_estimators(layer_id, ei)
                     # fit_trainsform
                     test_sets = [("test", X_cur_test, y_test)] if n_tests > 0 else None
-                    y_probas = est.fit_transform(X_cur_train, y_train, y_train,
+                    y_probas, _features = est.fit_transform(X_cur_train, y_train, y_train,
                             test_sets=test_sets, eval_metrics=self.eval_metrics,
-                            keep_model_in_mem=train_config.keep_model_in_mem)
+                            keep_model_in_mem=train_config.keep_model_in_mem, threshold=threshold)
+                    li__features = li__features.add(_features, fill_value=0)
                     # train
                     X_proba_train[:, ei * n_classes: ei * n_classes + n_classes] = y_probas[0]
                     y_train_proba_li += y_probas[0]
@@ -252,6 +255,7 @@ class CascadeClassifier(object):
                 train_avg_acc = calc_accuracy(y_train, np.argmax(y_train_proba_li, axis=1), 'layer_{} - train.classifier_average'.format(layer_id))
                 # train_avg_acc = calc_accuracy(y_train, y_train_proba_li,
                 #                               'layer_{} - train.classifier_average'.format(layer_id))
+                dict_layer_features[str(layer_id)] = li__features
 
                 train_acc_list.append(train_avg_acc)
                 if n_tests > 0:
@@ -280,7 +284,7 @@ class CascadeClassifier(object):
                             for ei, est_config in enumerate(self.est_configs):
                                 self._set_estimator(li, ei, None)
                     self.opt_layer_num = opt_layer_id + 1
-                    return opt_layer_id, opt_datas[0], opt_datas[1], opt_datas[2], opt_datas[3]
+                    return opt_layer_id, opt_datas[0], opt_datas[1], opt_datas[2], opt_datas[3], self._layer_features(dict_layer_features, opt_layer_id)
                 # save opt data if needed
                 if self.data_save_rounds > 0 and (layer_id + 1) % self.data_save_rounds == 0:
                     self.save_data(data_save_dir, layer_id, *opt_datas)
@@ -291,7 +295,7 @@ class CascadeClassifier(object):
             if data_save_dir is not None:
                 self.save_data( self.max_layers - 1, *opt_datas)
             self.opt_layer_num = self.max_layers
-            return self.max_layers, opt_datas[0], opt_datas[1], opt_datas[2], opt_datas[3]
+            return self.max_layers, opt_datas[0], opt_datas[1], opt_datas[2], opt_datas[3], self._layer_features(dict_layer_features)
         except KeyboardInterrupt:
             pass
 
@@ -350,7 +354,16 @@ class CascadeClassifier(object):
             LOGGER.info("Saving Data in {} ... X.shape={}, y.shape={}".format(data_path, data["X"].shape, data["y"].shape))
             with open(data_path, "wb") as f:
                 pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
-    def write_lay_id(self, lay_id):
-        file = osp.join(osp.join("output", "result"), "features_selection.txt")
-        with open(file, 'a') as wf:
-            wf.write("\n" + "lay_id=" + str(lay_id) + "\n")
+
+    def _layer_features(self, features, opt_layer_id):
+        feats = pd.Series()
+        for level, feat in features.items():
+            if int(level) <= opt_layer_id:
+                if int(level) > 0:
+                    n_meta_features = self.n_classes * self.n_estimators_1
+                    feat[feat.index >= n_meta_features]
+                    # feat = [f for f in feat if f >= n_meta_features]
+                    index = [int(x) - n_meta_features + 1 for x in feat.index]
+                    feat.reindex(index)
+                feats = feats.add(feat, fill_value=0)
+        return feats

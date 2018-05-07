@@ -10,6 +10,7 @@ ATTN2: This package was developed by Mr.Ji Feng(fengj@lamda.nju.edu.cn). The rea
 import os.path as osp
 
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from ..utils.cache_utils import name2path
@@ -48,7 +49,7 @@ class KFoldWrapper(object):
         est_args["random_state"] = self.random_state
         return self.est_class(est_name, est_args)
 
-    def fit_transform(self, X, y, y_stratify, cache_dir=None, test_sets=None, eval_metrics=None, keep_model_in_mem=True):
+    def fit_transform(self, X, y, y_stratify, cache_dir=None, test_sets=None, eval_metrics=None, keep_model_in_mem=True, threshold=None):
         """
         X (ndarray):
             n x k or n1 x n2 x k
@@ -90,8 +91,7 @@ class KFoldWrapper(object):
         n_datas = X.size / n_dims
         inverse = False
 
-        my_acc = 0.0
-        my_est = None
+        cv_features = pd.Series()
         for k in range(self.n_folds):
             est = self._init_estimator(k)
             if not inverse:
@@ -99,14 +99,14 @@ class KFoldWrapper(object):
             else:
                 val_idx, train_idx = cv[k]
             # fit on k-fold train
-            est.fit(X[train_idx].reshape((-1, n_dims)), y[train_idx].reshape(-1), cache_dir=cache_dir)
+            _features = est.fit(X[train_idx].reshape((-1, n_dims)), y[train_idx].reshape(-1), cache_dir=cache_dir, threshold=threshold)
+            cv_features = cv_features.add(_features, fill_value=0)
 
             # predict on k-fold validation
             y_proba = est.predict_proba(X[val_idx].reshape((-1, n_dims)), cache_dir=cache_dir)
             if len(X.shape) == 3:
                 y_proba = y_proba.reshape((len(val_idx), -1, y_proba.shape[-1]))
-            cv_acc = self.log_eval_metrics(self.name, y[val_idx], y_proba, eval_metrics, "train_{}".format(k))
-            # self.write_cv_acc("inner fold=" + str(k) + "\n" + "accuracy=" + str(cv_acc))
+            self.log_eval_metrics(self.name, y[val_idx], y_proba, eval_metrics, "train_{}".format(k))
             # merging result
             if k == 0:
                 if len(X.shape) == 2:
@@ -137,7 +137,7 @@ class KFoldWrapper(object):
         for vi, (test_name, X_test, y_test) in enumerate(test_sets):
             if y_test is not None:
                 self.log_eval_metrics(self.name, y_test, y_probas[vi + 1], eval_metrics, test_name)
-        return y_probas
+        return y_probas, cv_features
 
     def log_eval_metrics(self, est_name, y_true, y_proba, eval_metrics, y_name):
         """
@@ -149,7 +149,6 @@ class KFoldWrapper(object):
         for (eval_name, eval_metric) in eval_metrics:
             accuracy = eval_metric(y_true, y_proba)
             LOGGER.info("Accuracy({}.{}.{})={:.2f}%".format(est_name, y_name, eval_name, accuracy * 100.))
-        return accuracy
 
     def predict_proba(self, X_test):
         assert 2 <= len(X_test.shape) <= 3, "X_test.shape should be n x k or n x n2 x k"
@@ -167,10 +166,5 @@ class KFoldWrapper(object):
                 y_proba_kfolds += y_proba
         y_proba_kfolds /= self.n_folds
         return y_proba_kfolds
-
-    def write_cv_acc(self, content):
-        file = osp.join(osp.join("output", "result"), "features_selection.txt")
-        with open(file, 'a') as wf:
-            wf.write("\n" + content + "\n")
 
 

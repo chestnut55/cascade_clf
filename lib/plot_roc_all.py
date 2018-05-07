@@ -22,14 +22,6 @@ from gcforest.utils.log_utils import get_logger
 
 LOGGER = get_logger('cascade_clf.lib.plot_roc_all')
 
-output_dir = osp.join("output", "result")
-if not osp.exists(output_dir):
-    os.makedirs(output_dir)
-file = osp.join(output_dir, "features_selection.txt")
-with open(file, 'w') as wf:
-    wf.write('======================\n')
-
-
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
     return tf.Variable(initial)
@@ -70,29 +62,6 @@ def load_json(path):
     return json.loads("\n".join(lines))
 
 
-def write_output_results(content):
-    with open(file, 'a') as wf:
-        wf.write(content)
-
-
-def write_final_important_features(clf):
-    importances = clf.feature_importances_
-    indices = np.argsort(importances)[::-1]
-    num_selected_features = 30
-
-    indices = indices[:num_selected_features]
-
-    output_feat = []
-    for f in range(0, num_selected_features):
-        f = "%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]])
-        output_feat.append(f)
-    if len(output_feat) > 0:
-        content = "\n".join(output_feat)
-        file = osp.join(output_dir, "features_selection.txt")
-        with open(file, 'a') as wf:
-            wf.write(content)
-
-
 if __name__ == "__main__":
 
     save_fig = True
@@ -119,7 +88,7 @@ if __name__ == "__main__":
         X = None
         Y = None
         if dataset_idx == 0:
-            X, Y = load.cirrhosis_strain_data()
+            X, Y = load.cirrhosis_data()
         elif dataset_idx == 1:
             X, Y = load.t2d_data()
         elif dataset_idx == 2:
@@ -154,7 +123,7 @@ if __name__ == "__main__":
                     L2 = 64  # number of convolutions for second layer
                     L3 = 1024  # number of neurons for dense layer
                     learning_date = 1e-4  # learning rate
-                    epochs = 100  # number of times we loop through training data
+                    epochs = 90  # number of times we loop through training data
                     batch_size = 10  # number of data per batch
 
                     Y_trans = one_hot(Y)
@@ -226,7 +195,6 @@ if __name__ == "__main__":
                     cnn_pred_acc.append(accuracy)
                     y_pred = y_conv.eval(feed_dict={xs: test_data, ys: test_labels, keep_prob: 1.0})
 
-                    print("y_pred=", y_pred.shape)
                     fpr, tpr, thresholds = roc_curve(Y[test], y_pred[:, 1])
                     v = interp(mean_fpr, fpr, tpr)
                     tprs.append(v)
@@ -239,7 +207,6 @@ if __name__ == "__main__":
                 else:
                     probas_ = None
                     if isinstance(x[0], GCForest):
-                        write_output_results("\nouter fold " + str(idx))
                         gc = x[0]
                         x_train = X.iloc[train]
                         y_train = Y[train]
@@ -252,12 +219,7 @@ if __name__ == "__main__":
 
                         X_train_enc = gc.fit_transform(X_train, y_train)
 
-                        ###############################
-                        y_pred = gc.predict(X_test)
-                        acc = accuracy_score(y_test, y_pred)
-                        gc_pred_acc.append(acc)
-                        print("Test Accuracy of GcForest = {:.2f} %".format(acc * 100))
-                        probas_ = gc.predict_proba(X_test)
+                        probas_,  _ = gc.predict_proba(X_test)
                     else:
                         x[0].fit(X.iloc[train], Y[train])
                         probas_ = x[0].predict_proba(X.iloc[test])
@@ -275,8 +237,6 @@ if __name__ == "__main__":
             ax[dataset_idx].plot(mean_fpr, mean_tpr, color=x[1], label='{}' '(auc={:.3f})'.format(x[2], mean_auc),
                                  lw=2, alpha=.8)
 
-        print("Accuracy Deep Forest: %0.3f (+/- %0.3f)" % (
-            np.array(gc_pred_acc).mean(), np.array(gc_pred_acc).std() * 2))
 
         ax[dataset_idx].plot([0, 1], [0, 1], linestyle='--', lw=2, color='grey', alpha=.8)
         ax[dataset_idx].set_title(name)
