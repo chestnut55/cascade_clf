@@ -18,6 +18,12 @@ from ..utils.log_utils import get_logger
 
 LOGGER = get_logger("gcforest.estimators.kfold_wrapper")
 
+
+def avg_importance(sa, sb):
+    sc = sa.add(sb, fill_value=None).dropna() / 2
+    sd = sa.add(sb, fill_value=0).drop(sc.index)
+    return sc.append(sd)
+
 class KFoldWrapper(object):
     """
     K-Fold Wrapper
@@ -100,7 +106,7 @@ class KFoldWrapper(object):
                 val_idx, train_idx = cv[k]
             # fit on k-fold train
             _features = est.fit(X[train_idx].reshape((-1, n_dims)), y[train_idx].reshape(-1), cache_dir=cache_dir, threshold=threshold)
-            cv_features = cv_features.add(_features, fill_value=0)
+            cv_features = avg_importance(cv_features, _features)
 
             # predict on k-fold validation
             y_proba = est.predict_proba(X[val_idx].reshape((-1, n_dims)), cache_dir=cache_dir)

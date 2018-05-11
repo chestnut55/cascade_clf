@@ -3,6 +3,8 @@ import json
 import os
 import os.path as osp
 import pandas as pd
+import numpy as np
+from utils import avg_importance
 
 from sklearn.model_selection import StratifiedKFold
 
@@ -73,7 +75,7 @@ if __name__ == "__main__":
                 X_train_enc, _features = gc.fit_transform(X_train, y_train,threshold=thre)
 
                 probas_ = gc.predict_proba(X_test)
-                ca_features = ca_features.add(_features, fill_value=0)
+                ca_features = avg_importance(ca_features,_features)
 
             if len(ca_features) > 0:
                 thre_features[str(thre)] = dict(ca_features)

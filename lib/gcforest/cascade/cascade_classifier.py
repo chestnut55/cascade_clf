@@ -22,6 +22,11 @@ import pandas as pd
 LOGGER = get_logger('gcforest.cascade.cascade_classifier')
 
 
+def avg_importance(sa, sb):
+    sc = sa.add(sb, fill_value=None).dropna() / 2
+    sd = sa.add(sb, fill_value=0).drop(sc.index)
+    return sc.append(sd)
+
 def check_dir(path):
     d = osp.abspath(osp.join(path, osp.pardir))
     if not osp.exists(d):
@@ -241,7 +246,7 @@ class CascadeClassifier(object):
                     y_probas, _features = est.fit_transform(X_cur_train, y_train, y_train,
                             test_sets=test_sets, eval_metrics=self.eval_metrics,
                             keep_model_in_mem=train_config.keep_model_in_mem, threshold=threshold)
-                    li__features = li__features.add(_features, fill_value=0)
+                    li__features = avg_importance(li__features, _features)
                     # train
                     X_proba_train[:, ei * n_classes: ei * n_classes + n_classes] = y_probas[0]
                     y_train_proba_li += y_probas[0]
