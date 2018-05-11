@@ -71,7 +71,7 @@ def feat_indx(database_name, threhold):
     for key, value in dicts.iteritems():
         if key == str(threhold):
             df = pd.DataFrame({'feature': value.keys(), 'importance': value.values()})
-            df = df.sort_values(['importance'])
+            df = df.sort_values(by=['importance'],ascending=False)
 
             feat_idx = df['feature'].tolist()
 
@@ -195,14 +195,24 @@ def autolabel(rects, ax):
                 "{:.3f}".format(height),
                 ha='center', va='bottom',size=8)
 
+def get_reduced_features():
+    datasets = ['cirrhosis', 't2d', 'obesity']
+    feat_len = []
+    for dataset_idx,name in enumerate(datasets):
+        length = len(feat_indx(name, 0.001))
+        feat_len.append(length)
+    return feat_len
+
+
 if __name__ == "__main__":
 
+    print get_reduced_features()
     save_fig = True
     # # ==============================================
 
     f, ax = plt.subplots(2, 2,figsize=(10,5))
 
-    cv = StratifiedKFold(n_splits=3, shuffle=False, random_state=0)
+    cv = StratifiedKFold(n_splits=5, shuffle=False, random_state=0)
 
     clf_rf = RandomForestClassifier(n_estimators=100, random_state=0)
 
@@ -217,8 +227,6 @@ if __name__ == "__main__":
               (clf_rf, 'green', "Random Forest"),
               ('cnn', 'purple', "CNN"),
               (clf_gc, 'red', "Deep Forest")]
-    # classifiers = [(clf_svm, 'black', "SVM"),
-    #           (clf_rf, 'green', "Random Forest")]
 
     for idx, classifier in enumerate(classifiers):
         acc_before = []
@@ -247,6 +255,10 @@ if __name__ == "__main__":
             else:
                 clf_acc_before = []
                 clf_acc_after = []
+
+                # if idx == 3:
+                #     cv = StratifiedKFold(n_splits=5, shuffle=False, random_state=0)
+
                 for train, test in cv.split(X, Y):
                     if idx == 2:  ## CNN
                         accuracy = cnn_acc(X, Y, train, test)
