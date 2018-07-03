@@ -8,7 +8,7 @@ from sklearn.preprocessing import normalize
 def obesity_data():
     f = pd.read_csv('../lib/gcforest/data/obesity/count_matrix.csv', sep=',', header=None)
     f = f.loc[(f != 0).any(axis=1)]
-    f = (f - f.min()) / (f.max() - f.min())
+    # f = (f - f.min()) / (f.max() - f.min())
 
     l = pd.read_csv('../lib/gcforest/data/obesity/labels.txt', sep='\t', header=None)
     l = l.T.iloc[0]
@@ -21,7 +21,7 @@ def obesity_data():
 def cirrhosis_data():
     f = pd.read_csv('../lib/gcforest/data/cirrhosis/count_matrix.csv', sep=',', header=None)
     f = f.loc[(f != 0).any(axis=1)]
-    f = (f - f.min()) / (f.max() - f.min())
+    # f = (f - f.min()) / (f.max() - f.min())
 
     l = pd.read_csv('../lib/gcforest/data/cirrhosis/labels.txt', sep='\t', header=None)
     l = l.T.iloc[0]
@@ -34,7 +34,7 @@ def cirrhosis_data():
 def t2d_data():
     f = pd.read_csv('../lib/gcforest/data/t2d/count_matrix.csv', sep=',', header=None)
     f = f.loc[(f != 0).any(axis=1)]
-    f = (f - f.min()) / (f.max() - f.min())
+    # f = (f - f.min()) / (f.max() - f.min())
 
     l = pd.read_csv('../lib/gcforest/data/t2d/labels.txt', sep='\t', header=None)
     l = l.T.iloc[0]

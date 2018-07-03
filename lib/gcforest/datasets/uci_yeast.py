@@ -36,7 +36,7 @@ def load_data():
         #print(list(map(float, cols[1:1+8])))
         X[i,:] = list(map(float, cols[1:1+8]))
         y[i] = label2id[cols[-1]]
-    train_idx, test_idx = train_test_split(range(n_datas), random_state=0, train_size=0.7, stratify=y)
+    train_idx, test_idx = train_test_split(range(n_datas), train_size=0.7, stratify=y)
     return (X[train_idx], y[train_idx]), (X[test_idx], y[test_idx])
 
 

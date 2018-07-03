@@ -9,6 +9,7 @@ from utils import avg_importance
 from sklearn.model_selection import StratifiedKFold
 
 import gcforest.data_load as load
+import gcforest.data_load_phy as load2
 from gcforest.gcforest import GCForest
 from gcforest.utils.log_utils import get_logger
 
@@ -45,7 +46,7 @@ if __name__ == "__main__":
     gc = GCForest(config)
 
     datasets = ['cirrhosis','t2d', 'obesity']
-    importance_thresholds = [1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
+    importance_thresholds = [1e-4]
 
     for dataset_idx, name in enumerate(datasets):
         thre_features = {}

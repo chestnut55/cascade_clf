@@ -133,7 +133,9 @@ class BaseClassifierWrapper(object):
         return 0
 
     def _fit(self, est, X, y, threshold=0.001):
-        est.fit(X, y)
+        est.fit(X, y) 
+        ###TODO
+        ###TODO
         return self._features(est, threshold)
 
     def _predict_proba(self, est, X):

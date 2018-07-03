@@ -1,6 +1,7 @@
 import numpy as np
 
-from .cascade.cascade_classifier import CascadeClassifier
+from .cascade.cascade_classifier import CascadeClassifier as ca_clf
+from .cascade.stacking_cascade_classifier import CascadeClassifier as sca_clf
 from .config import GCTrainConfig
 from .fgnet import FGNet
 from .utils.log_utils import get_logger
@@ -16,8 +17,10 @@ class GCForest(object):
             self.fg = FGNet(self.config["net"], self.train_config.data_cache)
         else:
             self.fg = None
-        if "cascade" in self.config:
-            self.ca = CascadeClassifier(self.config["cascade"])
+        if "stacking_cascade"in self.config:
+            self.ca = sca_clf(self.config["stacking_cascade"])
+        elif "cascade" in self.config:
+            self.ca = ca_clf(self.config["cascade"])
         else:
             self.ca = None
 

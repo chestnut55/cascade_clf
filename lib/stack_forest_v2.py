@@ -1,15 +1,16 @@
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import cross_val_predict, StratifiedKFold, train_test_split, cross_val_score
+from sklearn.model_selection import cross_val_predict, StratifiedKFold, train_test_split,cross_val_score
 from sklearn.ensemble import BaseEnsemble
 import logging
 import uuid
 from sklearn.datasets import load_iris
-from gcforest.datasets import uci_yeast
+from sklearn.linear_model import LogisticRegression
 
 import gcforest.data_load as load
 import gcforest.data_load_phy as load2
+from mlxtend.classifier import StackingCVClassifier
 
 
 def create_logger(instance, verbose):
@@ -22,9 +23,8 @@ def create_logger(instance, verbose):
 
     return logger
 
-
 class CascadeForest():
-    def __init__(self, estimators_config, folds=3, verbose=False):
+    def __init__(self, estimators_config, folds=3,verbose=False):
         self.estimators_config = estimators_config
         self.folds = folds
         self.logger = create_logger(self, verbose)
@@ -50,8 +50,19 @@ class CascadeForest():
                     method='predict_proba',
                     n_jobs=-1,
                 )
-
                 predictions.append(prediction)
+            # stacking
+            lr = LogisticRegression(n_jobs=-1)
+            clfs = [est for est in estimators]
+            sclf = StackingCVClassifier(classifiers=clfs,
+                                        meta_classifier=lr, use_probas=True, cv=self.folds,
+                                        verbose=3)
+            # sclf.fit(X, y)
+            final_pred = cross_val_predict(sclf, X, y, cv=self.folds, method='predict_proba',
+                              n_jobs=-1, )
+            # final_pred = sclf.predict_proba(X)
+
+
             X = np.hstack([X] + predictions)
             y_prediction = self.classes.take(
                 np.array(predictions).mean(axis=0).argmax(axis=1)
@@ -86,7 +97,7 @@ if __name__ == "__main__":
         'cascade': [{
             'estimator_class': RandomForestClassifier,
             'estimator_params': {
-                'n_estimators': 500,
+                'n_estimators': 200,
                 'n_jobs': -1,
                 'random_state': 0
             }
@@ -94,7 +105,7 @@ if __name__ == "__main__":
             {
                 'estimator_class': ExtraTreesClassifier,
                 'estimator_params': {
-                    'n_estimators': 500,
+                    'n_estimators': 200,
                     'n_jobs': -1,
                     'random_state': 0,
                     'max_features': 1
@@ -103,7 +114,7 @@ if __name__ == "__main__":
             {
                 'estimator_class': RandomForestClassifier,
                 'estimator_params': {
-                    'n_estimators': 500,
+                    'n_estimators': 200,
                     'n_jobs': -1,
                     'random_state': 0
                 }
@@ -111,41 +122,7 @@ if __name__ == "__main__":
             {
                 'estimator_class': ExtraTreesClassifier,
                 'estimator_params': {
-                    'n_estimators': 500,
-                    'n_jobs': -1,
-                    'random_state': 0,
-                    'max_features': 1
-                }
-            },
-            {
-                'estimator_class': RandomForestClassifier,
-                'estimator_params': {
-                    'n_estimators': 500,
-                    'n_jobs': -1,
-                    'random_state': 0
-                }
-            },
-            {
-                'estimator_class': ExtraTreesClassifier,
-                'estimator_params': {
-                    'n_estimators': 500,
-                    'n_jobs': -1,
-                    'random_state': 0,
-                    'max_features': 1
-                }
-            },
-            {
-                'estimator_class': RandomForestClassifier,
-                'estimator_params': {
-                    'n_estimators': 500,
-                    'n_jobs': -1,
-                    'random_state': 0
-                }
-            },
-            {
-                'estimator_class': ExtraTreesClassifier,
-                'estimator_params': {
-                    'n_estimators': 500,
+                    'n_estimators': 200,
                     'n_jobs': -1,
                     'random_state': 0,
                     'max_features': 1
@@ -154,29 +131,24 @@ if __name__ == "__main__":
         ]
     }
 
+
     #
     # iris = load_iris()
     # X, Y = iris.data,iris.target
+    X,Y = load.obesity_data()
+
+    x_tr,x_te,y_tr,y_te = train_test_split(X,Y,stratify=Y,random_state=42)
+    c_forest = CascadeForest(estimators_config['cascade'])
+    c_forest.fit(x_tr,y_tr)
+    y_pred = c_forest.predict(x_te)
+    accuracy = accuracy_score(y_te, y_pred)
+    print(accuracy)
+
+    rf = RandomForestClassifier(n_estimators=200,random_state=42)
+    rf.fit(x_tr,y_tr)
+    y_pred = rf.predict(x_te)
+    accuracy = accuracy_score(y_te, y_pred)
+    print(accuracy)
 
 
-    acc1 = []
-    acc2 = []
-    for i in range(10):
-        X, Y = load2.yeast_data()
-        x_tr,x_te,y_tr,y_te = train_test_split(X,Y,stratify=Y,test_size=0.3)
-        c_forest = CascadeForest(estimators_config['cascade'])
-        c_forest.fit(x_tr, y_tr)
-        y_pred = c_forest.predict(x_te)
-        accuracy1 = accuracy_score(y_te, y_pred)
-        acc1.append(accuracy1)
-        print(accuracy1)
 
-        rf = RandomForestClassifier(n_estimators=500, random_state=0)
-        rf.fit(x_tr, y_tr)
-        y_pred = rf.predict(x_te)
-        accuracy2 = accuracy_score(y_te, y_pred)
-        acc2.append(accuracy2)
-        print(accuracy2)
-
-    print(acc1)
-    print(acc2)

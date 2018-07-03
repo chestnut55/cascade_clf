@@ -75,19 +75,14 @@ def DDF(X, y, forest):
     :param y:(nsamples,labels) e.g 1
     :return: the weight of decision tree in the forest
     """
-    lamda = 1
-    tao = 10
-    S = 400
 
-    P = []
-    Q = []
+    result = []
     for tree in forest.estimators_:
         X_proba = tree.predict_proba(X)
-        [p, q] = calculate_euclidean_l1_distance(X_proba, y)
-        P.append(p)
-        Q.append(q)
+        result.append(X_proba)
 
-    return modified_FW(np.asarray(P), np.asarray(Q), lamda, tao, S, forest.estimators_)
+
+    return np.asarray(result)
 
 
 class CascadeForest():
@@ -144,19 +139,15 @@ class CascadeForest():
                 estimator.fit(X, y)
 
                 sfk= StratifiedKFold(n_splits=self.folds,random_state=0)
-                w_list = []
                 X = np.asarray(X)
                 tmp = np.zeros((X.shape[0],2))
                 for tr,te in sfk.split(X,y):
-                    weight = DDF(X[tr], y[tr], estimator)
-                    for (a,tree) in enumerate(estimator.estimators_):
-                        tmp[te] += tree.predict_proba(X[te]) * weight[a]
-                    w_list.append(weight)
+                    for tree in estimator.estimators_:
+                        tree.fit(X[tr],y[tr])
+                        probas_ = tree.predict_proba(X[te])
+                        tmp[te] = probas_
 
-                weight = np.sum(np.asarray(w_list),axis=0)/self.folds
 
-                aaa = estimator.predict_proba(X)
-                weighted_prediction = tmp
                 # TODO
                 # TODO
                 # TODO
@@ -172,9 +163,8 @@ class CascadeForest():
                 #     n_jobs=-1,
                 # )
 
-                predictions.append(weighted_prediction)
+                predictions.append(tmp)
 
-                weights.append(weight)
 
             self.logger.info('Level {}:: got all predictions'.format(self.level + 1))
 
@@ -204,13 +194,14 @@ class CascadeForest():
     def predict(self, X):
         for (l,estimators) in enumerate(self.levels):
             predictions = []
-            level_weights = self.weights[l]
-            for (i, estimator) in enumerate(estimators):
-                w = np.asarray(level_weights[i])
-                predictions.append(self.predict_probability(estimator, X, w))
-            self.logger.info('Shape of predictions: {} shape of X: {}'.format(
-                np.array(predictions).shape, X.shape
-            ))
+            for est in estimators:
+                tmp = []
+                for tree in est.estimators_:
+                    tmp.append(tree.predict_proba(X))
+                tmp = np.asarray(tmp)
+                predictions.append(np.sum(tmp,axis=0)/len(est.estimators_))
+
+
             X = np.hstack([X] + predictions)
 
         return self.classes.take(
@@ -254,9 +245,9 @@ if __name__ == "__main__":
         }]
     }
 
-    X, Y = load.cirrhosis_data()
+    X, Y = load.obesity_data()
 
-    x_tr,x_te,y_tr,y_te = train_test_split(X,Y,random_state=42,stratify=Y,test_size=0.3)
+    x_tr,x_te,y_tr,y_te = train_test_split(X,Y,random_state=42,stratify=Y)
     c_forest = CascadeForest(estimators_config['cascade'])
     c_forest.fit(x_tr,y_tr)
     y_pred = c_forest.predict(x_te)

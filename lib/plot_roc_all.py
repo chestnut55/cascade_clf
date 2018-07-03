@@ -110,14 +110,15 @@ if __name__ == "__main__":
 
         params = [(clf_svm, 'black', "SVM"),
                   (clf_rf, 'green', "Random Forest"),
-                  ('cnn', 'purple', "CNN"),
-                  (clf_gc, 'red', "Deep Forest")]
+                  (clf_gc, 'red', "Deep Forest")
+                  ('cnn', 'purple', "CNN")
+                  ]
         for idx, x in enumerate(params):
             mean_fpr = np.linspace(0, 1, 100)
             tprs = []
             aucs = []
             for train, test in cv.split(X, Y):
-                if idx == 2:  ## CNN
+                if idx == 3:  ## CNN
                     ####CNN####################################################
                     L1 = 32  # number of convolutions for first layer
                     L2 = 64  # number of convolutions for second layer
@@ -219,7 +220,7 @@ if __name__ == "__main__":
 
                         X_train_enc = gc.fit_transform(X_train, y_train)
 
-                        probas_,  _ = gc.predict_proba(X_test)
+                        probas_ = gc.predict_proba(X_test)
                     else:
                         x[0].fit(X.iloc[train], Y[train])
                         probas_ = x[0].predict_proba(X.iloc[test])

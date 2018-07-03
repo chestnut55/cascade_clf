@@ -77,10 +77,12 @@ def feat_indx(database_name, threhold):
 
             feat_idx = [int(f) for f in feat_idx]
 
-            # if database_name == 'obesity':
-            #     return feat_idx[:250]
-            # elif database_name == 't2d':
-            #     return feat_idx[:50]
+            if database_name == 'obesity':
+                return feat_idx[:50]
+            elif database_name == 't2d':
+                return feat_idx[:180]
+            elif database_name == 'cirrhosis':
+                return feat_idx[:80]
             return feat_idx
 
 def cnn_acc(X, Y, train, test):
@@ -199,12 +201,14 @@ def get_reduced_features():
     datasets = ['cirrhosis', 't2d', 'obesity']
     feat_len = []
     for dataset_idx,name in enumerate(datasets):
-        length = len(feat_indx(name, 0.001))
+        ## 0.0001:[512, 518, 445]
+        length = len(feat_indx(name, 0.0001))
         feat_len.append(length)
     return feat_len
 
 
 if __name__ == "__main__":
+
 
     print get_reduced_features()
     save_fig = True
@@ -214,7 +218,7 @@ if __name__ == "__main__":
 
     cv = StratifiedKFold(n_splits=5, shuffle=False, random_state=0)
 
-    clf_rf = RandomForestClassifier(n_estimators=100, random_state=0)
+    clf_rf = RandomForestClassifier(n_estimators=50, random_state=0)
 
     clf_svm = SVC(kernel='linear', C=1,
                   gamma=0.001, random_state=0, probability=True)
@@ -236,15 +240,15 @@ if __name__ == "__main__":
             Y = None
             if dataset_idx == 0:
                 X, Y = load.cirrhosis_data()
-                feat_idx = feat_indx(name, 0.001)
+                feat_idx = feat_indx(name, 0.0001)
                 X_hat = X.ix[:, feat_idx]
             elif dataset_idx == 1:
                 X, Y = load.t2d_data()
-                feat_idx = feat_indx(name, 0.001)
+                feat_idx = feat_indx(name, 0.0001)
                 X_hat = X.ix[:, feat_idx]
             elif dataset_idx == 2:
                 X, Y = load.obesity_data()
-                feat_idx = feat_indx(name, 0.001)
+                feat_idx = feat_indx(name, 0.0001)
                 X_hat = X.ix[:, feat_idx]
             else:
                 raise Exception('the dataset is not defined!!!')

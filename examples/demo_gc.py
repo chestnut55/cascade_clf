@@ -80,16 +80,16 @@ if __name__ == "__main__":
     print("Test Accuracy of Other classifier using gcforest's X_encode = {:.2f} %".format(acc * 100))
     LOGGER.info("Test Accuracy of Other classifier using gcforest's X_encode = {:.2f} %".format(acc * 100))
 
-    # dump
-    with open("test.pkl", "wb") as f:
-        pickle.dump(gc, f, pickle.HIGHEST_PROTOCOL)
-    # load
-    with open("test.pkl", "rb") as f:
-        gc = pickle.load(f)
-    y_pred = gc.predict(X_test)
-    acc = accuracy_score(y_test, y_pred)
-    print("Test Accuracy of GcForest (save and load) = {:.2f} %".format(acc * 100))
-    LOGGER.info("Test Accuracy of GcForest (save and load) = {:.2f} %".format(acc * 100))
+    # # dump
+    # with open("test.pkl", "wb") as f:
+    #     pickle.dump(gc, f, pickle.HIGHEST_PROTOCOL)
+    # # load
+    # with open("test.pkl", "rb") as f:
+    #     gc = pickle.load(f)
+    # y_pred = gc.predict(X_test)
+    # acc = accuracy_score(y_test, y_pred)
+    # print("Test Accuracy of GcForest (save and load) = {:.2f} %".format(acc * 100))
+    # LOGGER.info("Test Accuracy of GcForest (save and load) = {:.2f} %".format(acc * 100))
 
 
 
