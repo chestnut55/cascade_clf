@@ -270,15 +270,13 @@ class CascadeClassifier(object):
                 y_test_proba_li = np.zeros((n_tests, n_classes))
 
                 # self.write_lay_id(layer_id)
-                li__features = pd.Series()
                 for ei, est_config in enumerate(self.est_configs):
                     est = self._init_estimators(layer_id, ei)
                     # fit_trainsform
                     test_sets = [("test", X_cur_test, y_test)] if n_tests > 0 else None
-                    y_probas, _features = est.fit_transform(X_cur_train, y_train, y_train,
+                    y_probas = est.fit_transform(X_cur_train, y_train, y_train,
                             test_sets=test_sets, eval_metrics=self.eval_metrics,
                             keep_model_in_mem=train_config.keep_model_in_mem, threshold=threshold)
-                    li__features = avg_importance(li__features, _features)
                     # train
                     X_proba_train[:, ei * n_classes: ei * n_classes + n_classes] = y_probas[0]
                     y_train_proba_li += y_probas[0]
@@ -296,7 +294,7 @@ class CascadeClassifier(object):
                     # fit_trainsform
                     test_sets = [("test", X_cur_test, y_test)] if n_tests > 0 else None
                     tmp_concat = np.hstack((X_proba_train[:,0:self.n_estimators_1 * n_classes], X_train))
-                    y_probas, _features = est.fit_transform(tmp_concat, y_train, y_train,
+                    y_probas = est.fit_transform(tmp_concat, y_train, y_train,
                             test_sets=test_sets, eval_metrics=self.eval_metrics,
                             keep_model_in_mem=train_config.keep_model_in_mem, threshold=threshold)
                     # train
@@ -311,7 +309,6 @@ class CascadeClassifier(object):
                 train_avg_acc = calc_accuracy(y_train, np.argmax(y_train_proba_li, axis=1), 'layer_{} - train.classifier_average'.format(layer_id))
                 # train_avg_acc = calc_accuracy(y_train, y_train_proba_li,
                 #                               'layer_{} - train.classifier_average'.format(layer_id))
-                dict_layer_features[str(layer_id)] = li__features
 
                 train_acc_list.append(train_avg_acc)
                 if n_tests > 0:
@@ -342,7 +339,7 @@ class CascadeClassifier(object):
                             for ei, est_config in enumerate(self.stacked_est_configs):
                                 self._set_estimator_stack(li, ei, None)
                     self.opt_layer_num = opt_layer_id + 1
-                    return opt_layer_id, opt_datas[0], opt_datas[1], opt_datas[2], opt_datas[3], self._layer_features(dict_layer_features, opt_layer_id)
+                    return opt_layer_id, opt_datas[0], opt_datas[1], opt_datas[2], opt_datas[3]
                 # save opt data if needed
                 if self.data_save_rounds > 0 and (layer_id + 1) % self.data_save_rounds == 0:
                     self.save_data(data_save_dir, layer_id, *opt_datas)
@@ -353,7 +350,7 @@ class CascadeClassifier(object):
             if data_save_dir is not None:
                 self.save_data( self.max_layers - 1, *opt_datas)
             self.opt_layer_num = self.max_layers
-            return self.max_layers, opt_datas[0], opt_datas[1], opt_datas[2], opt_datas[3], self._layer_features(dict_layer_features)
+            return self.max_layers, opt_datas[0], opt_datas[1], opt_datas[2], opt_datas[3]
         except KeyboardInterrupt:
             pass
 

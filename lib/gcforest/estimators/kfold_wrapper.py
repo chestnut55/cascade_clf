@@ -97,7 +97,6 @@ class KFoldWrapper(object):
         n_datas = X.size / n_dims
         inverse = False
 
-        cv_features = pd.Series()
         for k in range(self.n_folds):
             est = self._init_estimator(k)
             if not inverse:
@@ -106,7 +105,7 @@ class KFoldWrapper(object):
                 val_idx, train_idx = cv[k]
             # fit on k-fold train
             _features = est.fit(X[train_idx].reshape((-1, n_dims)), y[train_idx].reshape(-1), cache_dir=cache_dir, threshold=threshold)
-            cv_features = avg_importance(cv_features, _features)
+            # cv_features = avg_importance(cv_features, _features)
 
             # predict on k-fold validation
             y_proba = est.predict_proba(X[val_idx].reshape((-1, n_dims)), cache_dir=cache_dir)
@@ -143,7 +142,7 @@ class KFoldWrapper(object):
         for vi, (test_name, X_test, y_test) in enumerate(test_sets):
             if y_test is not None:
                 self.log_eval_metrics(self.name, y_test, y_probas[vi + 1], eval_metrics, test_name)
-        return y_probas, cv_features
+        return y_probas
 
     def log_eval_metrics(self, est_name, y_true, y_proba, eval_metrics, y_name):
         """
